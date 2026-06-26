@@ -1,0 +1,77 @@
+# =============================================================================
+# Toka User Management - ALL IN ONE CONTAINER
+# SQL Server + MongoDB + Redis + RabbitMQ + 6 microservices + Gateway + Frontend
+# =============================================================================
+
+# --- Build .NET services ---
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS dotnet-build
+WORKDIR /src
+COPY . .
+RUN dotnet publish services/AuthService/AuthService.Api/AuthService.Api.csproj -c Release -o /publish/auth && \
+    dotnet publish services/UserService/UserService.Api/UserService.Api.csproj -c Release -o /publish/user && \
+    dotnet publish services/RoleService/RoleService.Api/RoleService.Api.csproj -c Release -o /publish/role && \
+    dotnet publish services/AuditService/AuditService.Api/AuditService.Api.csproj -c Release -o /publish/audit && \
+    dotnet publish services/AiAgentService/AiAgentService.Api/AiAgentService.Api.csproj -c Release -o /publish/agent && \
+    dotnet publish gateway/Gateway.Api/Gateway.Api.csproj -c Release -o /publish/gateway
+
+# --- Build frontend ---
+FROM node:20-alpine AS frontend-build
+WORKDIR /app
+COPY frontend/package.json ./
+RUN npm install
+COPY frontend/ .
+ENV VITE_API_URL=/api
+RUN npm run build
+
+# --- Runtime all-in-one ---
+FROM ubuntu:22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ACCEPT_EULA=Y
+ENV MSSQL_SA_PASSWORD=Toka@123456
+ENV OPENAI_API_KEY=""
+
+# Microsoft repo + SQL Server + .NET 8 + infra + supervisor + nginx
+RUN apt-get update && apt-get install -y curl gnupg apt-transport-https ca-certificates supervisor nginx redis-server \
+    rabbitmq-server erlang-nox gosu \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -o /tmp/packages-microsoft-prod.deb \
+    && dpkg -i /tmp/packages-microsoft-prod.deb \
+    && curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list | tee /etc/apt/sources.list.d/mssql-server.list \
+    && apt-get update \
+    && apt-get install -y mssql-server aspnetcore-runtime-8.0 \
+    && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor \
+    && echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && apt-get update && apt-get install -y mongodb-org \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# Copy published apps
+COPY --from=dotnet-build /publish/auth /app/auth
+COPY --from=dotnet-build /publish/user /app/user
+COPY --from=dotnet-build /publish/role /app/role
+COPY --from=dotnet-build /publish/audit /app/audit
+COPY --from=dotnet-build /publish/agent /app/agent
+COPY --from=dotnet-build /publish/gateway /app/gateway
+COPY docker/all-in-one/gateway-appsettings.json /app/gateway/appsettings.Production.json
+
+# Copy frontend
+COPY --from=frontend-build /app/dist /usr/share/nginx/html
+
+# Config
+COPY docker/all-in-one/nginx.conf /etc/nginx/sites-available/default
+COPY docker/all-in-one/supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/all-in-one/entrypoint.sh /entrypoint.sh
+COPY docker/all-in-one/wait-infra.sh /app/wait-infra.sh
+RUN sed -i 's/\r$//' /entrypoint.sh /app/wait-infra.sh \
+    && chmod +x /entrypoint.sh /app/wait-infra.sh \
+    && ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default \
+    && rm -f /etc/nginx/sites-enabled/default.bak 2>/dev/null; true
+
+RUN mkdir -p /data/db /var/log/supervisor /var/opt/mssql
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+  CMD curl -f http://127.0.0.1/health || exit 1
+
+ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]

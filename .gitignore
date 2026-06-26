@@ -1,0 +1,41 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.cache
+*.log
+
+# Test / coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vs/
+.idea/
+*.swp
+*.DotSettings.user
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+*.tar
+
+# Cursor / assets
+assets/

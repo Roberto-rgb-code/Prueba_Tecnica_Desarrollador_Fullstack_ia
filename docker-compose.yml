@@ -1,0 +1,200 @@
+name: toka-user-management
+
+x-jwt-env: &jwt-env
+  Jwt__Issuer: toka-auth
+  Jwt__Audience: toka-services
+  Jwt__SecretKey: TokaSuperSecretKeyForJwtTokens2024!MustBeLongEnough
+  Jwt__ExpirationMinutes: "60"
+
+x-rabbit-env: &rabbit-env
+  RabbitMq__Host: rabbitmq
+  RabbitMq__Username: guest
+  RabbitMq__Password: guest
+  RabbitMq__ExchangeName: toka.events
+  Messaging__UseRabbitMq: "true"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Toka@123456"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Toka@123456' -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 60s
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/AuthService/Dockerfile
+    environment:
+      <<: [*jwt-env, *rabbit-env]
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__AuthDb: "Server=sqlserver;Database=TokaAuth;User Id=sa;Password=Toka@123456;TrustServerCertificate=True;"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/UserService/Dockerfile
+    environment:
+      <<: [*jwt-env, *rabbit-env]
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__UserDb: "Server=sqlserver;Database=TokaUsers;User Id=sa;Password=Toka@123456;TrustServerCertificate=True;"
+      ConnectionStrings__Redis: "redis:6379"
+      Caching__UseRedis: "true"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  role-service:
+    build:
+      context: .
+      dockerfile: services/RoleService/Dockerfile
+    environment:
+      <<: [*jwt-env, *rabbit-env]
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__RoleDb: "Server=sqlserver;Database=TokaRoles;User Id=sa;Password=Toka@123456;TrustServerCertificate=True;"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: services/AuditService/Dockerfile
+    environment:
+      <<: [*jwt-env, *rabbit-env]
+      ASPNETCORE_ENVIRONMENT: Production
+      MongoDb__ConnectionString: "mongodb://mongodb:27017"
+      MongoDb__DatabaseName: TokaAudit
+      MongoDb__CollectionName: audit_logs
+      MongoDb__UseMongo: "true"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ai-agent-service:
+    build:
+      context: .
+      dockerfile: services/AiAgentService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      OpenAi__ApiKey: ${OPENAI_API_KEY:-}
+      Qdrant__Host: qdrant
+      Qdrant__Port: "6334"
+      Qdrant__Enabled: "true"
+      Services__UserService: "http://user-service:8080/"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    depends_on:
+      - auth-service
+      - user-service
+      - role-service
+      - audit-service
+      - ai-agent-service
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data:
+  mongodb-data:
+  qdrant-data:

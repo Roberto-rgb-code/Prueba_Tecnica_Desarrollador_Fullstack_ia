@@ -1,0 +1,25 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6f9; color: #1a1a2e; }
+.app { min-height: 100vh; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #16213e; color: white; }
+.header-actions { display: flex; gap: 1rem; align-items: center; }
+.header button, .nav a, button { cursor: pointer; border: none; border-radius: 6px; padding: 0.5rem 1rem; }
+.header button { background: #e94560; color: white; }
+.nav { display: flex; gap: 0.5rem; padding: 1rem 2rem; background: white; border-bottom: 1px solid #ddd; }
+.nav a { text-decoration: none; color: #333; background: #eee; }
+.nav a.active { background: #0f3460; color: white; }
+.main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-card { background: white; padding: 2rem; border-radius: 12px; width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+input, textarea, select { padding: 0.6rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+button[type="submit"] { background: #0f3460; color: white; font-weight: 600; }
+.link-btn { background: none; color: #0f3460; text-decoration: underline; }
+.form-row { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.form-col { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #0f3460; color: white; }
+.error { background: #fee; color: #c00; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+.loading { padding: 2rem; text-align: center; color: #666; }
+.answer-card { background: white; padding: 1.5rem; border-radius: 8px; margin-top: 1rem; }
+.danger { background: #e94560 !important; color: white; margin-left: 0.5rem; }

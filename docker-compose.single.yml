@@ -1,0 +1,15 @@
+name: toka-all-in-one
+
+services:
+  toka:
+    build:
+      context: .
+      dockerfile: Dockerfile.all-in-one
+    ports:
+      - "3000:80"
+    environment:
+      MSSQL_SA_PASSWORD: "Toka@123456"
+      ACCEPT_EULA: "Y"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    restart: unless-stopped
+    shm_size: "256mb"
