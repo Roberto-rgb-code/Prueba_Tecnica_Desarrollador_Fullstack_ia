@@ -96,7 +96,7 @@ docker compose -f docker-compose.single.yml down -v
 | Disco libre | ~5 GB |
 | Puerto **3000** | Libre |
 
-> **Windows:** si el build falla, clona en `C:\dev\toka` (ruta sin tildes ni espacios).
+> **Windows:** si el build falla, clona en `C:\dev\toka` (ruta sin tildes). Si usas el script `.ps1` y ves "buildkit isn't enabled", es solo un aviso — los comandos `docker compose` de arriba funcionan igual.
 
 ### Scripts opcionales (alternativa al Paso 2)
 
