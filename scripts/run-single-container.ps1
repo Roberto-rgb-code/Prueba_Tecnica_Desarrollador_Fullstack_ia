@@ -18,6 +18,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  App:  http://localhost:3000"
     Write-Host ""
     Write-Host "Espera 2-3 minutos a que SQL Server y servicios inicien." -ForegroundColor Yellow
+    Write-Host "Verificar: .\scripts\verify-stack.ps1" -ForegroundColor Cyan
     Write-Host "Ver logs: docker compose -f docker-compose.single.yml logs -f" -ForegroundColor Gray
     Write-Host "Detener:  docker compose -f docker-compose.single.yml down" -ForegroundColor Gray
 }

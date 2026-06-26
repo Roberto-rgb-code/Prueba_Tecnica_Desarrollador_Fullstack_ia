@@ -29,9 +29,26 @@ public class QdrantSettings
 public class AgentAppService : IAgentService
 {
     private const string SystemPrompt = """
-        You are Toka Assistant, an AI agent for the Toka User Management system.
-        Answer questions about users, roles, authentication, and audit using ONLY the provided context.
-        If the context is insufficient, say so clearly. Be concise and professional.
+        Eres Toka Assistant, agente del sistema Toka User Management.
+        REGLAS:
+        - Responde SIEMPRE en español.
+        - Usa OBLIGATORIAMENTE la sección "CONTEXTO" del mensaje del usuario.
+        - Si el contexto menciona roles, usuarios, auth o auditoría, inclúyelo en la respuesta.
+        - Responde en 3-6 oraciones claras con viñetas si ayuda.
+        - NO digas que falta información si el CONTEXTO ya tiene datos relevantes.
+        """;
+
+    private static string BuildUserPrompt(string question, string knowledgeContext, string liveData) =>
+        $"""
+        CONTEXTO (base de conocimiento RAG — DEBES usar esto):
+        {knowledgeContext}
+
+        DATOS EN VIVO DEL SISTEMA:
+        {liveData}
+
+        PREGUNTA DEL USUARIO: {question}
+
+        Instrucción: Responde la pregunta usando el CONTEXTO de arriba. Si pregunta por roles, menciona Admin y User si aparecen en el contexto.
         """;
 
     private readonly IVectorStore _vectorStore;
@@ -56,20 +73,20 @@ public class AgentAppService : IAgentService
         var sw = Stopwatch.StartNew();
         var userContext = await _userContext.GetUserSummaryAsync(cancellationToken);
         var embedding = await _llm.CreateEmbeddingAsync(request.Question, cancellationToken);
-        var sources = await _vectorStore.SearchAsync(embedding, limit: 3, cancellationToken);
+        var sources = await _vectorStore.SearchAsync(embedding, limit: 4, cancellationToken);
 
-        var context = string.Join("\n\n", sources.Select(s => $"[{s.Title}]\n{s.Content}"));
-        var prompt = $"""
-            Context from knowledge base:
-            {context}
-
-            Live system data:
-            {userContext}
-
-            User question: {request.Question}
-            """;
+        var context = sources.Count > 0
+            ? string.Join("\n\n", sources.Select(s => $"• {s.Title}: {s.Content}"))
+            : "Sin documentos recuperados.";
+        var prompt = BuildUserPrompt(request.Question, context, userContext);
 
         var (answer, inputTokens, outputTokens) = await _llm.CompleteAsync(SystemPrompt, prompt, cancellationToken);
+
+        if (_llm.ProviderName == "Ollama" && ShouldUseRagFallback(answer, prompt) && sources.Count > 0)
+        {
+            _logger.LogWarning("Ollama returned weak answer, applying RAG fallback synthesis");
+            answer = MockAnswerBuilder.Build(prompt);
+        }
         sw.Stop();
 
         var isLocal = _llm.ProviderName is "Mock" or "Ollama";
@@ -95,7 +112,7 @@ public class AgentAppService : IAgentService
         {
             new KnowledgeDocument { Title = "User Management", Content = "Toka allows creating, updating, and deactivating users. Each user has email, first name, last name, and active status.", Category = "users" },
             new KnowledgeDocument { Title = "Authentication", Content = "Users authenticate via JWT tokens issued by Auth Service. Register at /api/auth/register and login at /api/auth/login.", Category = "auth" },
-            new KnowledgeDocument { Title = "Roles", Content = "Roles Admin and User are seeded by default. Roles can be assigned to users via POST /api/roles/{roleId}/assign/{userId}.", Category = "roles" },
+            new KnowledgeDocument { Title = "Roles", Content = "El sistema Toka incluye roles por defecto: Admin (acceso completo al sistema) y User (acceso estándar). Puedes listar roles en GET /api/roles, crear nuevos con POST /api/roles y asignar con POST /api/roles/{roleId}/assign/{userId}.", Category = "roles" },
             new KnowledgeDocument { Title = "Audit", Content = "All user and role events are published to RabbitMQ and stored in MongoDB audit logs accessible at /api/audit.", Category = "audit" }
         };
 
@@ -109,6 +126,39 @@ public class AgentAppService : IAgentService
 
     private static decimal EstimateCost(int inputTokens, int outputTokens) =>
         inputTokens * 0.00000015m + outputTokens * 0.0000006m;
+
+    private static bool ShouldUseRagFallback(string answer, string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(answer))
+            return true;
+
+        var lower = answer.ToLowerInvariant();
+        if (lower.Contains("no hay información")
+            || lower.Contains("no hay suficiente")
+            || lower.Contains("insufficient")
+            || lower.Contains("no tengo información")
+            || lower.Contains("no se proporcion")
+            || lower.Contains("could you provide"))
+            return true;
+
+        // llama3.2:1b often echoes the prompt instead of answering
+        if (lower.Contains("contexto (base de conocimiento")
+            || lower.Contains("debes usar esto")
+            || lower.Contains("datos en vivo del sistema")
+            || lower.Contains("pregunta del usuario:"))
+            return true;
+
+        var normalizedAnswer = NormalizeForComparison(answer);
+        var normalizedPrompt = NormalizeForComparison(prompt);
+        if (normalizedAnswer.Length > 40
+            && normalizedPrompt.Contains(normalizedAnswer[..Math.Min(normalizedAnswer.Length, 120)], StringComparison.Ordinal))
+            return true;
+
+        return false;
+    }
+
+    private static string NormalizeForComparison(string text) =>
+        new string(text.Where(c => !char.IsWhiteSpace(c)).ToArray()).ToLowerInvariant();
 }
 
 public interface IVectorStore

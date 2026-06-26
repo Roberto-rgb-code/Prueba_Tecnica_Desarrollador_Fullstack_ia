@@ -61,10 +61,10 @@ public class OllamaHttpClient : IOpenAiClient
             stream = false,
             messages = new[]
             {
-                new { role = "system", content = systemPrompt + "\nResponde en español de forma clara y concisa." },
+                new { role = "system", content = systemPrompt },
                 new { role = "user", content = userPrompt }
             },
-            options = new { temperature = 0.3 }
+            options = new { temperature = 0.2, num_predict = 512 }
         };
 
         _logger.LogInformation("Calling Ollama model {Model}", _settings.ChatModel);
