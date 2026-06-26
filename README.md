@@ -6,51 +6,30 @@ Prueba técnica **Senior Full-Stack Engineer (IA)** — sistema de gestión de u
 
 ---
 
-## Inicio rápido — clonar y levantar (recomendado)
+## Levantar el proyecto (3 pasos)
 
-Modo **contenedor único**: SQL Server, MongoDB, Redis, RabbitMQ, microservicios, gateway, frontend y **Ollama** (LLM local) en Docker. No necesitas instalar .NET ni Node para ejecutar la app.
+Solo necesitas **Docker Desktop** instalado y **encendido**. No hace falta .NET ni Node.
 
-### Requisitos previos
-
-| Herramienta | Versión mínima | Notas |
-|-------------|----------------|-------|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 4.x | Docker Compose v2 incluido |
-| RAM libre | **10 GB** recomendado | Ollama + SQL Server consumen memoria |
-| Disco libre | **~5 GB** | Build + modelos Ollama (~1–2 GB) |
-| Puerto **3000** | Libre | Frontend + API vía nginx |
-
-> **Windows:** clona el repo en una ruta **sin tildes ni espacios** (ej. `C:\dev\toka`) si el build falla. El script ya usa `DOCKER_BUILDKIT=0` por compatibilidad.
-
-### Paso 1 — Clonar
-
-```powershell
-git clone https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia.git
-cd Prueba_Tecnica_Desarrollador_Fullstack_ia
-```
-
-Linux / macOS:
+### Paso 1 — Clonar el repositorio
 
 ```bash
 git clone https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia.git
 cd Prueba_Tecnica_Desarrollador_Fullstack_ia
-chmod +x scripts/*.sh
 ```
 
-### Paso 2 — Levantar el stack
+### Paso 2 — Levantar con Docker
+
+Abre una terminal **dentro de la carpeta del proyecto** y ejecuta:
 
 **Windows (PowerShell):**
 
 ```powershell
-.\scripts\run-single-container.ps1
+$env:DOCKER_BUILDKIT = "0"
+$env:COMPOSE_DOCKER_CLI_BUILD = "0"
+docker compose -f docker-compose.single.yml up --build -d
 ```
 
 **Linux / macOS:**
-
-```bash
-./scripts/run-single-container.sh
-```
-
-Equivalente manual:
 
 ```bash
 export DOCKER_BUILDKIT=0
@@ -58,72 +37,81 @@ export COMPOSE_DOCKER_CLI_BUILD=0
 docker compose -f docker-compose.single.yml up --build -d
 ```
 
-**Tiempos esperados:**
+> La **primera vez** tarda 15–30 min (build + descarga de modelos Ollama). Es normal.
 
-| Fase | Duración |
-|------|----------|
-| Primera build de imagen `toka` | 10–20 min |
-| Descarga modelos Ollama (`ollama-init`) | 5–15 min (solo la 1.ª vez) |
-| Arranque SQL Server + microservicios | 2–3 min |
-| Healthcheck `healthy` | ~3 min desde `up` |
-
-### Paso 3 — Verificar que todo funciona
-
-Espera **2–3 minutos** tras el `up`, luego:
-
-**Windows:**
-
-```powershell
-.\scripts\verify-stack.ps1
-```
-
-**Linux / macOS:**
+**Comprobar que Docker está corriendo:**
 
 ```bash
-./scripts/verify-stack.sh
+docker info
+docker compose -f docker-compose.single.yml ps
 ```
 
-Verificación manual:
+Debes ver 2 contenedores activos: `ollama` y `toka`.
+
+**Ver progreso en tiempo real:**
+
+```bash
+docker compose -f docker-compose.single.yml logs -f
+```
+
+(Salir con `Ctrl+C` — no detiene los contenedores.)
+
+### Paso 3 — Abrir la aplicación
+
+1. Espera **2–3 minutos** después del `up`.
+2. Abre en el navegador: **http://localhost:3000**
+3. Clic en **Regístrate** → crea un usuario (email + contraseña mín. 6 caracteres).
+4. Prueba las pestañas: Usuarios, Roles, Auditoría, **Agente IA**.
+
+**Verificar que todo responde (opcional):**
 
 ```bash
 curl http://localhost:3000/health
-# /api/roles requiere JWT; 401 confirma que el gateway responde:
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/api/roles
-curl -X POST http://localhost:3000/api/agent/query \
-  -H "Content-Type: application/json" \
-  -d "{\"question\":\"Que roles existen en el sistema?\"}"
 ```
 
-Debes ver:
+Debe devolver HTTP **200**. En el agente IA pregunta: *¿Qué roles existen en el sistema?*
 
-- `/health` → HTTP **200**
-- `/api/roles` → HTTP **401** (protegido; confirma que el gateway funciona)
-- Agente IA → respuesta mencionando **Admin** / **User** (`llmProvider`: `Ollama`)
+---
 
-### Paso 4 — Usar la aplicación
+### Detener el proyecto
 
-1. Abre **http://localhost:3000**
-2. Clic en **Regístrate** (no hay usuario precargado)
-3. Email + contraseña (mín. 6 caracteres) + nombre
-4. Explora pestañas: **Usuarios**, **Roles**, **Auditoría**, **Agente IA**
-
-**Preguntas de prueba en el agente:**
-
-- *¿Qué roles existen en el sistema?*
-- *¿Cómo funciona la autenticación JWT?*
-- *¿Dónde se guardan los logs de auditoría?*
-
-### Detener y limpiar
-
-```powershell
+```bash
 docker compose -f docker-compose.single.yml down
 ```
 
-Para borrar también volúmenes (modelos Ollama descargados):
+Borrar también volúmenes (modelos Ollama descargados):
 
-```powershell
+```bash
 docker compose -f docker-compose.single.yml down -v
 ```
+
+---
+
+### Requisitos previos
+
+| Requisito | Detalle |
+|-----------|---------|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Instalado y **en ejecución** |
+| RAM libre | 10 GB recomendado |
+| Disco libre | ~5 GB |
+| Puerto **3000** | Libre |
+
+> **Windows:** si el build falla, clona en `C:\dev\toka` (ruta sin tildes ni espacios).
+
+### Scripts opcionales (alternativa al Paso 2)
+
+Si prefieres un atajo, desde **cualquier carpeta** puedes usar:
+
+```powershell
+.\scripts\run-single-container.ps1
+```
+
+```bash
+chmod +x scripts/*.sh
+./scripts/run-single-container.sh
+```
+
+Los scripts ejecutan los mismos comandos `docker compose` de arriba.
 
 ---
 
@@ -400,16 +388,18 @@ Rutas vía gateway en `/api/...`:
 
 | Síntoma | Solución |
 |---------|----------|
-| Build falla en Windows con ruta con tildes | Clona en `C:\dev\toka` o usa `DOCKER_BUILDKIT=0` (ya en scripts) |
-| `/health` no responde tras 5 min | `docker compose -f docker-compose.single.yml logs -f toka` — espera SQL Server |
-| Agente dice "no hay información" | Ejecuta `verify-stack`; reinicia: `docker compose -f docker-compose.single.yml restart toka` |
-| `ollama-init` lento o falla | Verifica conexión a internet; reintenta `docker compose -f docker-compose.single.yml up ollama-init` |
-| Puerto 3000 ocupado | Cambia en `docker-compose.single.yml`: `"3001:80"` |
-| Poca RAM | Cierra apps; mínimo 8 GB; Ollama recomienda 10 GB |
+| `docker: command not found` o error al conectar | Abre **Docker Desktop** y espera a que diga "Running". Prueba `docker info`. |
+| No levanta nada / compose no encuentra archivo | Asegúrate de estar en la carpeta del repo: `cd Prueba_Tecnica_Desarrollador_Fullstack_ia` |
+| Build falla en Windows con ruta con tildes | Clona en `C:\dev\toka` y ejecuta `$env:DOCKER_BUILDKIT="0"` antes del `docker compose` |
+| `/health` no responde tras 5 min | `docker compose -f docker-compose.single.yml logs -f toka` — SQL Server tarda en arrancar |
+| Agente IA no responde bien | `docker compose -f docker-compose.single.yml restart toka` y espera 2 min |
+| `ollama-init` lento o falla | Necesitas internet la 1.ª vez; reintenta `docker compose -f docker-compose.single.yml up ollama-init` |
+| Puerto 3000 ocupado | En `docker-compose.single.yml` cambia `"3000:80"` por `"3001:80"` |
+| Poca RAM | Cierra otras apps; mínimo 8 GB, recomendado 10 GB |
 
 Ver logs en tiempo real:
 
-```powershell
+```bash
 docker compose -f docker-compose.single.yml logs -f
 ```
 

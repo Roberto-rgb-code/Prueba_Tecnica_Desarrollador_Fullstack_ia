@@ -1,4 +1,8 @@
-# Desactiva BuildKit si la ruta del proyecto tiene caracteres especiales (é, –, etc.)
+# Modo multi-contenedor (desde la raiz del repo)
+$ErrorActionPreference = "Stop"
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+Set-Location $RepoRoot
+
 $env:DOCKER_BUILDKIT = "0"
 $env:COMPOSE_DOCKER_CLI_BUILD = "0"
 

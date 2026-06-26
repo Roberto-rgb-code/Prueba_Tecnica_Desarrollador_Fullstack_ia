@@ -1,7 +1,7 @@
-# Levanta TODO en un solo contenedor
+# Levanta TODO en un solo contenedor (desde la raiz del repo)
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $Root
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+Set-Location $RepoRoot
 
 $env:DOCKER_BUILDKIT = "0"
 $env:COMPOSE_DOCKER_CLI_BUILD = "0"
@@ -18,7 +18,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  App:  http://localhost:3000"
     Write-Host ""
     Write-Host "Espera 2-3 minutos a que SQL Server y servicios inicien." -ForegroundColor Yellow
-    Write-Host "Verificar: .\scripts\verify-stack.ps1" -ForegroundColor Cyan
+    Write-Host "Verificar: curl http://localhost:3000/health" -ForegroundColor Cyan
     Write-Host "Ver logs: docker compose -f docker-compose.single.yml logs -f" -ForegroundColor Gray
     Write-Host "Detener:  docker compose -f docker-compose.single.yml down" -ForegroundColor Gray
 }

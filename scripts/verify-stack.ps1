@@ -1,5 +1,7 @@
 # Verifica que el stack single-container responde correctamente
 $ErrorActionPreference = "Stop"
+$RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+Set-Location $RepoRoot
 $BaseUrl = "http://localhost:3000"
 
 Write-Host "=== Verificacion Toka ===" -ForegroundColor Cyan
@@ -7,7 +9,8 @@ Write-Host "=== Verificacion Toka ===" -ForegroundColor Cyan
 Write-Host "`n[1/4] Contenedores Docker..." -ForegroundColor Yellow
 $ps = docker compose -f docker-compose.single.yml ps --format json 2>$null | ConvertFrom-Json
 if (-not $ps) {
-    Write-Host "  ERROR: No hay contenedores levantados. Ejecuta .\scripts\run-single-container.ps1" -ForegroundColor Red
+    Write-Host "  ERROR: No hay contenedores levantados. Ejecuta:" -ForegroundColor Red
+    Write-Host "  docker compose -f docker-compose.single.yml up --build -d" -ForegroundColor Yellow
     exit 1
 }
 $ps | ForEach-Object { Write-Host "  $($_.Service): $($_.State)" }
