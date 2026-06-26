@@ -6,136 +6,70 @@ Prueba técnica **Senior Full-Stack Engineer (IA)** — sistema de gestión de u
 
 ---
 
-## Levantar el proyecto (3 pasos)
+## Cómo levantar el proyecto
 
-Solo necesitas **Docker Desktop** instalado y **encendido**. No hace falta .NET ni Node.
+Necesitas solo **Docker Desktop** instalado, encendido y con internet.
 
-> **Importante:** no uses `up --build` salvo que quieras compilar tú mismo (tarda **30–45 min** y necesita **~20 GB** de disco). Lo normal es **descargar la imagen ya compilada** desde GitHub.
-
-### Paso 1 — Clonar
+### 1. Clonar
 
 ```bash
 git clone https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia.git
 cd Prueba_Tecnica_Desarrollador_Fullstack_ia
 ```
 
-### Paso 2 — Descargar imagen y levantar
-
-Abre una terminal **dentro de la carpeta del proyecto**:
-
-**Windows (PowerShell):**
-
-```powershell
-docker compose -f docker-compose.single.yml pull
-docker compose -f docker-compose.single.yml up -d
-```
-
-**Linux / macOS:**
+### 2. Levantar
 
 ```bash
-docker compose -f docker-compose.single.yml pull
 docker compose -f docker-compose.single.yml up -d
 ```
 
-La primera vez también descarga **Ollama** y los modelos de IA (~1–2 GB). Total: **5–15 min** según tu internet.
+La **primera vez** puede tardar **10–15 minutos** (descarga de contenedores y modelos de IA). No cierres la terminal hasta que termine.
 
-**Comprobar estado:**
+Comprobar que están corriendo:
 
-```powershell
+```bash
 docker compose -f docker-compose.single.yml ps
 ```
 
-Debes ver `ollama` y `toka` en estado **running**.
+Debes ver `ollama` y `toka` en **running**.
 
-**Ver logs (si algo tarda):**
+### 3. Usar la aplicación
 
-```powershell
-docker compose -f docker-compose.single.yml logs -f toka
-```
+1. Espera **2–3 minutos** más (arranque de SQL Server dentro del contenedor).
+2. Abre **http://localhost:3000**
+3. Clic en **Regístrate** → email + contraseña (mín. 6 caracteres) + nombre.
+4. Explora: **Usuarios**, **Roles**, **Auditoría**, **Agente IA**.
 
-No cierres la terminal mientras ves actividad. Cuando SQL Server termine de arrancar, verás los microservicios activos.
+En el agente prueba: *¿Qué roles existen en el sistema?*
 
-### Paso 3 — Abrir la app
+### Detener
 
-1. Espera **2–3 minutos** después del `up`.
-2. Navegador: **http://localhost:3000**
-3. **Regístrate** (no hay usuario precargado).
-4. Prueba: Usuarios, Roles, Auditoría, **Agente IA**.
-
-Verificación rápida:
-
-```powershell
-curl http://localhost:3000/health
-```
-
-Debe responder **200**.
-
----
-
-### ¿Por qué falló `up --build`?
-
-Si ejecutaste `docker compose ... up --build -d`, Docker **compila todo en tu PC** (SQL Server, MongoDB, .NET, React…). Eso:
-
-- Tarda **30–45 minutos** (el log se queda mucho rato en `Step 17/35` instalando SQL Server — es normal).
-- Necesita **~20 GB** de espacio libre en disco.
-- Si cierras la terminal o se llena el disco, el build se corta y **no levanta nada**.
-
-**Solución:** usa `pull` + `up` (Paso 2 arriba), sin `--build`.
-
----
-
-### Compilar localmente (solo si hace falta)
-
-Solo si no puedes descargar la imagen de GitHub:
-
-```powershell
-$env:TOKA_BUILD = "1"
-$env:DOCKER_BUILDKIT = "0"
-docker compose -f docker-compose.single.yml up --build -d
-```
-
-**No interrumpas el proceso.** Espera hasta ver `Successfully built` o `Container ... Started`.
-
----
-
-### Detener el proyecto
-
-```powershell
+```bash
 docker compose -f docker-compose.single.yml down
 ```
 
-Borrar volúmenes (modelos Ollama):
+### Requisitos
 
-```powershell
-docker compose -f docker-compose.single.yml down -v
-```
+| Requisito | Mínimo |
+|-----------|--------|
+| Docker Desktop | En ejecución |
+| RAM | 10 GB recomendado |
+| Disco | 8 GB libres |
+| Puerto 3000 | Libre |
 
----
-
-### Requisitos previos
-
-| Requisito | Detalle |
-|-----------|---------|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Instalado y **en ejecución** (`docker info` sin errores) |
-| RAM libre | 10 GB recomendado |
-| Disco libre | **5 GB** con imagen preconstruida; **20 GB** si compilas local |
-| Puerto **3000** | Libre |
-| Internet | Primera vez (imagen + modelos Ollama) |
-
-### Scripts opcionales (alternativa al Paso 2)
-
-Si prefieres un atajo, desde **cualquier carpeta** puedes usar:
-
-```powershell
-.\scripts\run-single-container.ps1
-```
+### Si algo falla
 
 ```bash
-chmod +x scripts/*.sh
-./scripts/run-single-container.sh
+docker info
+docker compose -f docker-compose.single.yml logs -f
 ```
 
-Los scripts ejecutan los mismos comandos `docker compose` de arriba.
+| Problema | Qué hacer |
+|----------|-----------|
+| `docker` no reconocido | Abre Docker Desktop y espera a "Running" |
+| Tarda mucho la 1.ª vez | Normal. No uses `Ctrl+C`. Revisa logs con el comando de arriba |
+| `http://localhost:3000` no carga | Espera 3–5 min y revisa `docker compose -f docker-compose.single.yml ps` |
+| Puerto 3000 ocupado | Cambia `"3000:80"` por `"3001:80"` en `docker-compose.single.yml` |
 
 ---
 
@@ -405,27 +339,6 @@ Rutas vía gateway en `/api/...`:
 | `OLLAMA_CHAT_MODEL` | `llama3.2:1b` | Modelo chat Ollama |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Modelo embeddings |
 | `MSSQL_SA_PASSWORD` | `Toka@123456` | Password SQL Server (compose) |
-
----
-
-## Solución de problemas
-
-| Síntoma | Solución |
-|---------|----------|
-| `up --build` se corta en `Step 17/35` | Normal al compilar local. Usa `pull` + `up` sin `--build` (ver Paso 2). |
-| `pull` falla / imagen no encontrada | Espera a que termine [GitHub Actions](https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia/actions) o usa `$env:TOKA_BUILD="1"` |
-| `docker: command not found` | Abre **Docker Desktop** y espera "Running". Prueba `docker info`. |
-| No encuentra `docker-compose.single.yml` | `cd Prueba_Tecnica_Desarrollador_Fullstack_ia` (carpeta del clone) |
-| `/health` no responde tras 5 min | `docker compose -f docker-compose.single.yml logs -f toka` |
-| Agente IA no responde | `docker compose -f docker-compose.single.yml restart toka` |
-| Puerto 3000 ocupado | Cambia `"3000:80"` por `"3001:80"` en `docker-compose.single.yml` |
-| Poco disco al compilar | Necesitas ~20 GB libres; mejor usa `docker compose pull` |
-
-Ver logs en tiempo real:
-
-```bash
-docker compose -f docker-compose.single.yml logs -f
-```
 
 ---
 

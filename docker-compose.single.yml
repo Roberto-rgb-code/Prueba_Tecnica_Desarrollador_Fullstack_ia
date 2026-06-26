@@ -30,10 +30,7 @@ services:
 
   toka:
     image: ghcr.io/roberto-rgb-code/toka-all-in-one:latest
-    pull_policy: missing
-    build:
-      context: .
-      dockerfile: Dockerfile.all-in-one
+    pull_policy: always
     ports:
       - "3000:80"
     environment:
