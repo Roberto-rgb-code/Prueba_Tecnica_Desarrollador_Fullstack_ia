@@ -49,6 +49,7 @@ export interface AgentResponse {
   answer: string;
   sources: string[];
   metrics: { latencyMs: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number };
+  isDemoMode: boolean;
 }
 
 export const authApi = {

@@ -94,8 +94,10 @@ public class OpenAiHttpClient : IOpenAiClient
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
-            _logger.LogWarning("OpenAI API key not configured, using mock response");
-            return ($"[Mock AI] Based on context: {userPrompt[..Math.Min(200, userPrompt.Length)]}...", 100, 50);
+            _logger.LogInformation("OpenAI API key not configured, using local RAG demo response");
+            var demoAnswer = MockAnswerBuilder.Build(userPrompt);
+            var tokens = Math.Max(50, userPrompt.Length / 4);
+            return (demoAnswer, tokens, tokens / 2);
         }
 
         var payload = new

@@ -35,13 +35,20 @@ public class AgentAppService : IAgentService
     private readonly IVectorStore _vectorStore;
     private readonly IOpenAiClient _openAi;
     private readonly IUserContextClient _userContext;
+    private readonly OpenAiSettings _openAiSettings;
     private readonly ILogger<AgentAppService> _logger;
 
-    public AgentAppService(IVectorStore vectorStore, IOpenAiClient openAi, IUserContextClient userContext, ILogger<AgentAppService> logger)
+    public AgentAppService(
+        IVectorStore vectorStore,
+        IOpenAiClient openAi,
+        IUserContextClient userContext,
+        IOptions<OpenAiSettings> openAiSettings,
+        ILogger<AgentAppService> logger)
     {
         _vectorStore = vectorStore;
         _openAi = openAi;
         _userContext = userContext;
+        _openAiSettings = openAiSettings.Value;
         _logger = logger;
     }
 
@@ -75,7 +82,11 @@ public class AgentAppService : IAgentService
         _logger.LogInformation("Agent query completed in {LatencyMs}ms, tokens in={Input} out={Output}",
             metrics.LatencyMs, metrics.InputTokens, metrics.OutputTokens);
 
-        return new AgentQueryResponse(answer, sources.Select(s => s.Title).ToArray(), metrics);
+        return new AgentQueryResponse(
+            answer,
+            sources.Select(s => s.Title).ToArray(),
+            metrics,
+            string.IsNullOrWhiteSpace(_openAiSettings.ApiKey));
     }
 
     public async Task SeedKnowledgeBaseAsync(CancellationToken cancellationToken = default)

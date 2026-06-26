@@ -2,6 +2,7 @@ using AiAgentService.Application.DTOs;
 using AiAgentService.Domain.Entities;
 using AiAgentService.Infrastructure.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace AiAgentService.Tests;
@@ -20,17 +21,19 @@ public class AgentAppServiceTests
         _openAi.Setup(o => o.CreateEmbeddingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new float[] { 0.1f, 0.2f, 0.3f });
         _openAi.Setup(o => o.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(("Answer from agent", 120, 40));
+            .ReturnsAsync(("Respuesta de prueba", 120, 40));
         _vectorStore.Setup(v => v.SearchAsync(It.IsAny<float[]>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<KnowledgeDocument>
             {
                 new() { Title = "Auth", Content = "Login with JWT" }
             });
 
+        var settings = Options.Create(new OpenAiSettings { ApiKey = "test-key" });
         _service = new AgentAppService(
             _vectorStore.Object,
             _openAi.Object,
             _userContext.Object,
+            settings,
             NullLogger<AgentAppService>.Instance);
     }
 
@@ -39,7 +42,7 @@ public class AgentAppServiceTests
     {
         var result = await _service.QueryAsync(new AgentQueryRequest("How do I login?"));
 
-        Assert.Contains("Answer from agent", result.Answer);
+        Assert.Contains("Respuesta de prueba", result.Answer);
         Assert.Single(result.Sources);
         Assert.Equal("Auth", result.Sources[0]);
         Assert.True(result.Metrics.LatencyMs >= 0);

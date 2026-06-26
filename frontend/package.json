@@ -10,19 +10,28 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@lottiefiles/dotlottie-react": "^0.19.5",
+    "autoprefixer": "^10.5.2",
     "axios": "^1.7.9",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.21.0",
+    "postcss": "^8.5.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^25.0.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"
