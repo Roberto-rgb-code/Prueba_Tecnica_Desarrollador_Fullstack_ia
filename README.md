@@ -8,7 +8,7 @@ Prueba técnica **Senior Full-Stack Engineer (IA)** — sistema de gestión de u
 
 ## Cómo levantar el proyecto
 
-Necesitas solo **Docker Desktop** instalado, encendido y con internet.
+Necesitas **Docker Desktop** instalado, encendido y con internet.
 
 ### 1. Clonar
 
@@ -19,23 +19,33 @@ cd Prueba_Tecnica_Desarrollador_Fullstack_ia
 
 ### 2. Levantar
 
-```bash
-docker compose -f docker-compose.single.yml up -d
+**Windows (PowerShell):**
+
+```powershell
+$env:DOCKER_BUILDKIT = "0"
+docker compose up -d --build
 ```
 
-La **primera vez** puede tardar **10–15 minutos** (descarga de contenedores y modelos de IA). No cierres la terminal hasta que termine.
-
-Comprobar que están corriendo:
+**Linux / macOS:**
 
 ```bash
-docker compose -f docker-compose.single.yml ps
+export DOCKER_BUILDKIT=0
+docker compose up -d --build
 ```
 
-Debes ver `ollama` y `toka` en **running**.
+> La **primera vez** tarda **15–25 minutos** (descarga SQL Server, MongoDB, etc. y compila los microservicios). **No cierres la terminal** hasta que termine.
+
+Comprobar estado:
+
+```bash
+docker compose ps
+```
+
+Debes ver varios servicios en **running**, incluido `frontend` y `sqlserver`.
 
 ### 3. Usar la aplicación
 
-1. Espera **2–3 minutos** más (arranque de SQL Server dentro del contenedor).
+1. Espera **2–3 minutos** más (arranque de SQL Server).
 2. Abre **http://localhost:3000**
 3. Clic en **Regístrate** → email + contraseña (mín. 6 caracteres) + nombre.
 4. Explora: **Usuarios**, **Roles**, **Auditoría**, **Agente IA**.
@@ -45,7 +55,7 @@ En el agente prueba: *¿Qué roles existen en el sistema?*
 ### Detener
 
 ```bash
-docker compose -f docker-compose.single.yml down
+docker compose down
 ```
 
 ### Requisitos
@@ -54,22 +64,32 @@ docker compose -f docker-compose.single.yml down
 |-----------|--------|
 | Docker Desktop | En ejecución |
 | RAM | 10 GB recomendado |
-| Disco | 8 GB libres |
+| Disco | 15 GB libres (primera vez) |
 | Puerto 3000 | Libre |
 
 ### Si algo falla
 
 ```bash
 docker info
-docker compose -f docker-compose.single.yml logs -f
+docker compose logs -f
 ```
 
 | Problema | Qué hacer |
 |----------|-----------|
+| `error from registry: denied` | No uses `docker-compose.single.yml`. Usa `docker compose up -d --build` (arriba) |
 | `docker` no reconocido | Abre Docker Desktop y espera a "Running" |
-| Tarda mucho la 1.ª vez | Normal. No uses `Ctrl+C`. Revisa logs con el comando de arriba |
-| `http://localhost:3000` no carga | Espera 3–5 min y revisa `docker compose -f docker-compose.single.yml ps` |
-| Puerto 3000 ocupado | Cambia `"3000:80"` por `"3001:80"` en `docker-compose.single.yml` |
+| Tarda mucho la 1.ª vez | Normal (15–25 min). No uses `Ctrl+C` |
+| `http://localhost:3000` no carga | Espera 5 min y ejecuta `docker compose ps` |
+| Puerto 3000 ocupado | En `docker-compose.yml` cambia `"3000:80"` del servicio `frontend` |
+
+### Modo contenedor único (opcional, avanzado)
+
+Solo 2 contenedores, pero compila una imagen muy pesada (~45 min):
+
+```powershell
+$env:DOCKER_BUILDKIT = "0"
+docker compose -f docker-compose.single.yml up -d --build
+```
 
 ---
 
@@ -225,7 +245,8 @@ Principios aplicados:
 
 | Modo | Archivo | Descripción |
 |------|---------|-------------|
-| **Contenedor único** (default) | `docker-compose.single.yml` | Todo en 1 imagen + Ollama; RAG en memoria |
+| **Multi-contenedor** (recomendado) | `docker-compose.yml` | Imágenes públicas + build de microservicios |
+| **Contenedor único** (opcional) | `docker-compose.single.yml` | Todo en 1 imagen + Ollama; RAG en memoria |
 | **Multi-contenedor** | `docker-compose.yml` | 1 contenedor por servicio + **Qdrant** persistente |
 
 Documentación ampliada: [docs/architecture.md](docs/architecture.md)

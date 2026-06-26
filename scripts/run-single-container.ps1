@@ -1,14 +1,17 @@
-# Levanta el stack (mismo comando que el README)
+# Levanta el stack completo (mismo comando que el README)
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $RepoRoot
 
+$env:DOCKER_BUILDKIT = "0"
+$env:COMPOSE_DOCKER_CLI_BUILD = "0"
+
 Write-Host "=== Toka User Management ===" -ForegroundColor Cyan
-Write-Host "Levantando contenedores (la 1.a vez puede tardar 10-15 min)..." -ForegroundColor Yellow
+Write-Host "Primera vez: 15-25 min (compila microservicios). No cierres la terminal." -ForegroundColor Yellow
 
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-& docker compose -f docker-compose.single.yml up -d
+& docker compose up -d --build
 $exitCode = $LASTEXITCODE
 $ErrorActionPreference = $prevEap
 
@@ -21,5 +24,4 @@ Write-Host ""
 Write-Host "=== Contenedores iniciados ===" -ForegroundColor Green
 Write-Host "  App:  http://localhost:3000"
 Write-Host ""
-Write-Host "Espera 2-3 min y abre el navegador. Ver logs:" -ForegroundColor Yellow
-Write-Host "  docker compose -f docker-compose.single.yml logs -f" -ForegroundColor Gray
+Write-Host "Espera 2-3 min (SQL Server). Ver logs: docker compose logs -f" -ForegroundColor Yellow

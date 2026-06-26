@@ -29,8 +29,10 @@ services:
     restart: "no"
 
   toka:
-    image: ghcr.io/roberto-rgb-code/toka-all-in-one:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile.all-in-one
+    image: toka-all-in-one:local
     ports:
       - "3000:80"
     environment:

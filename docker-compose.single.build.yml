@@ -1,9 +1,0 @@
-# Compilar la imagen localmente (solo desarrolladores)
-# Uso: docker compose -f docker-compose.single.yml -f docker-compose.single.build.yml up --build -d
-
-services:
-  toka:
-    build:
-      context: .
-      dockerfile: Dockerfile.all-in-one
-    image: toka-all-in-one:local

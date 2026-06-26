@@ -3,14 +3,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-echo "=== Toka User Management ==="
-echo "Levantando contenedores (la 1.a vez puede tardar 10-15 min)..."
+export DOCKER_BUILDKIT=0
+export COMPOSE_DOCKER_CLI_BUILD=0
 
-docker compose -f docker-compose.single.yml up -d
+echo "=== Toka User Management ==="
+echo "Primera vez: 15-25 min (compila microservicios). No cierres la terminal."
+
+docker compose up -d --build
 
 echo ""
 echo "=== Contenedores iniciados ==="
 echo "  App:  http://localhost:3000"
-echo ""
-echo "Espera 2-3 min y abre el navegador."
-echo "Ver logs: docker compose -f docker-compose.single.yml logs -f"
+echo "Espera 2-3 min. Ver logs: docker compose logs -f"
