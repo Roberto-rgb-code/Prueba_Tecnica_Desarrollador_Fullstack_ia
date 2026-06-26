@@ -245,9 +245,8 @@ Principios aplicados:
 
 | Modo | Archivo | Descripción |
 |------|---------|-------------|
-| **Multi-contenedor** (recomendado) | `docker-compose.yml` | Imágenes públicas + build de microservicios |
+| **Multi-contenedor** (recomendado) | `docker-compose.yml` | Imágenes públicas + build de microservicios + Qdrant |
 | **Contenedor único** (opcional) | `docker-compose.single.yml` | Todo en 1 imagen + Ollama; RAG en memoria |
-| **Multi-contenedor** | `docker-compose.yml` | 1 contenedor por servicio + **Qdrant** persistente |
 
 Documentación ampliada: [docs/architecture.md](docs/architecture.md)
 
@@ -378,8 +377,8 @@ Rutas vía gateway en `/api/...`:
 ├── docker/                   # Config all-in-one (nginx, supervisord, entrypoint)
 ├── docs/                     # Arquitectura, diagnóstico, prompt engineering
 ├── scripts/                  # run-single-container, verify-stack, tests
-├── docker-compose.yml        # Multi-contenedor + Qdrant
-├── docker-compose.single.yml # Contenedor único + Ollama (recomendado)
+├── docker-compose.yml          # Multi-contenedor (recomendado)
+├── docker-compose.single.yml   # Contenedor único (opcional)
 └── Dockerfile.all-in-one
 ```
 
