@@ -17,31 +17,39 @@ git clone https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fulls
 cd Prueba_Tecnica_Desarrollador_Fullstack_ia
 ```
 
-### 2. Levantar
+### 2. Levantar (un solo comando)
+
+Usa el script de arranque. Hace el build, inicia **todos** los servicios y verifica el estado automáticamente.
 
 **Windows (PowerShell):**
 
 ```powershell
-$env:DOCKER_BUILDKIT = "0"
-docker compose up -d --build
+.\start.ps1
 ```
 
 **Linux / macOS:**
 
 ```bash
-export DOCKER_BUILDKIT=0
-docker compose up -d --build
+chmod +x start.sh
+./start.sh
 ```
 
-> La **primera vez** tarda **15–25 minutos** (descarga SQL Server, MongoDB, etc. y compila los microservicios). **No cierres la terminal** hasta que termine.
+> La **primera vez** tarda **15–25 minutos** (descarga SQL Server, MongoDB, etc. y compila los microservicios). **No cierres la terminal** hasta que termine. El script te muestra el estado al final.
 
-Comprobar estado:
+<details>
+<summary>¿Prefieres comandos manuales?</summary>
 
 ```bash
+docker compose up -d --build
+docker compose up -d   # 2.ª vez: arranca lo que haya quedado en estado "Created"
 docker compose ps
 ```
 
-Debes ver varios servicios en **running**, incluido `frontend` y `sqlserver`.
+El **segundo `docker compose up -d` es importante**: si el build tardó mucho, algunos contenedores quedan en estado `Created` y este comando los arranca. El script `start` ya lo hace por ti.
+
+</details>
+
+Al terminar debes ver todos los servicios en **Up**, incluidos `frontend`, `gateway` y `sqlserver`.
 
 ### 3. Usar la aplicación
 
@@ -76,7 +84,8 @@ docker compose logs -f
 
 | Problema | Qué hacer |
 |----------|-----------|
-| `error from registry: denied` | No uses `docker-compose.single.yml`. Usa `docker compose up -d --build` (arriba) |
+| Algunos contenedores en `Created` (no `Up`) | Ejecuta `docker compose up -d` otra vez (o usa `.\start.ps1`). El script ya lo arregla solo |
+| `error from registry: denied` | No uses `docker-compose.single.yml`. Usa `.\start.ps1` o `docker compose up -d --build` |
 | `docker` no reconocido | Abre Docker Desktop y espera a "Running" |
 | Tarda mucho la 1.ª vez | Normal (15–25 min). No uses `Ctrl+C` |
 | `http://localhost:3000` no carga | Espera 5 min y ejecuta `docker compose ps` |
@@ -270,27 +279,23 @@ Prioridad del proveedor LLM:
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."
 $env:LLM_PROVIDER = "OpenAi"
-.\scripts\run-single-container.ps1
+.\start.ps1
 ```
 
 Cambiar modelo Ollama:
 
 ```powershell
 $env:OLLAMA_CHAT_MODEL = "phi3:mini"
-.\scripts\run-single-container.ps1
+.\start.ps1
 ```
 
 Documentación de prompts: [docs/prompt-engineering.md](docs/prompt-engineering.md)
 
 ---
 
-## Modo multi-contenedor (Qdrant + arquitectura completa)
+## URLs de los servicios
 
-Para la arquitectura distribuida con **Qdrant** como vector DB persistente:
-
-```powershell
-.\scripts\run-docker.ps1
-```
+Cuando el stack está arriba (modo por defecto):
 
 | Servicio | URL |
 |----------|-----|
@@ -376,7 +381,8 @@ Rutas vía gateway en `/api/...`:
 ├── shared/                   # JWT, RabbitMQ, eventos compartidos
 ├── docker/                   # Config all-in-one (nginx, supervisord, entrypoint)
 ├── docs/                     # Arquitectura, diagnóstico, prompt engineering
-├── scripts/                  # run-single-container, verify-stack, tests
+├── start.ps1 / start.sh      # Arranque a prueba de errores
+├── scripts/                  # tests y utilidades
 ├── docker-compose.yml          # Multi-contenedor (recomendado)
 ├── docker-compose.single.yml   # Contenedor único (opcional)
 └── Dockerfile.all-in-one
