@@ -50,6 +50,7 @@ export interface AgentResponse {
   sources: string[];
   metrics: { latencyMs: number; inputTokens: number; outputTokens: number; estimatedCostUsd: number };
   isDemoMode: boolean;
+  llmProvider: string;
 }
 
 export const authApi = {

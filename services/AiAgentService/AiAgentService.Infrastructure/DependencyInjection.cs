@@ -14,9 +14,20 @@ public static class DependencyInjection
     public static IServiceCollection AddAgentInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<OpenAiSettings>(configuration.GetSection(OpenAiSettings.SectionName));
+        services.Configure<OllamaSettings>(configuration.GetSection(OllamaSettings.SectionName));
+        services.Configure<LlmSettings>(configuration.GetSection(LlmSettings.SectionName));
         services.Configure<QdrantSettings>(configuration.GetSection(QdrantSettings.SectionName));
 
-        services.AddHttpClient<IOpenAiClient, OpenAiHttpClient>();
+        services.AddHttpClient<OpenAiHttpClient>();
+        services.AddHttpClient<OllamaHttpClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<OllamaSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromMinutes(5);
+        });
+        services.AddSingleton<MockLlmClient>();
+        services.AddSingleton<IOpenAiClient>(sp => ResolveLlmClient(sp, configuration));
+
         services.AddHttpClient<IUserContextClient, HttpUserContextClient>(client =>
         {
             client.BaseAddress = new Uri(configuration["Services:UserService"] ?? "http://localhost:5085/");
@@ -29,6 +40,26 @@ public static class DependencyInjection
 
         services.AddScoped<IAgentService, AgentAppService>();
         return services;
+    }
+
+    private static IOpenAiClient ResolveLlmClient(IServiceProvider sp, IConfiguration configuration)
+    {
+        var llm = configuration.GetSection(LlmSettings.SectionName).Get<LlmSettings>() ?? new LlmSettings();
+        var openAiKey = configuration[$"{OpenAiSettings.SectionName}:ApiKey"];
+        var ollamaEnabled = configuration.GetValue($"{OllamaSettings.SectionName}:Enabled", false);
+
+        var provider = llm.Provider?.Trim().ToLowerInvariant() ?? "auto";
+
+        if (provider == "openai" || (provider == "auto" && !string.IsNullOrWhiteSpace(openAiKey)))
+            return sp.GetRequiredService<OpenAiHttpClient>();
+
+        if (provider == "ollama" || (provider == "auto" && ollamaEnabled))
+            return sp.GetRequiredService<OllamaHttpClient>();
+
+        if (provider == "mock")
+            return sp.GetRequiredService<MockLlmClient>();
+
+        return sp.GetRequiredService<MockLlmClient>();
     }
 
     public static WebApplication ConfigureAgentApi(this WebApplication app)

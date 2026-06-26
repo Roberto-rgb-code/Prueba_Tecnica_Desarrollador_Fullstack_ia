@@ -28,7 +28,7 @@ public class QdrantVectorStore : IVectorStore
         var collections = await _client.ListCollectionsAsync(cancellationToken);
         if (collections.Contains(_settings.CollectionName)) return;
 
-        await _client.CreateCollectionAsync(_settings.CollectionName, new VectorParams { Size = 1536, Distance = Distance.Cosine }, cancellationToken: cancellationToken);
+        await _client.CreateCollectionAsync(_settings.CollectionName, new VectorParams { Size = (ulong)_settings.VectorSize, Distance = Distance.Cosine }, cancellationToken: cancellationToken);
         _logger.LogInformation("Created Qdrant collection {Collection}", _settings.CollectionName);
     }
 
@@ -78,11 +78,10 @@ public class OpenAiHttpClient : IOpenAiClient
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
     }
 
+    public string ProviderName => "OpenAi";
+
     public async Task<float[]> CreateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-            return MockEmbedding(text);
-
         var payload = new { model = _settings.EmbeddingModel, input = text };
         var response = await _http.PostAsJsonAsync("https://api.openai.com/v1/embeddings", payload, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -92,14 +91,6 @@ public class OpenAiHttpClient : IOpenAiClient
 
     public async Task<(string Answer, int InputTokens, int OutputTokens)> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-        {
-            _logger.LogInformation("OpenAI API key not configured, using local RAG demo response");
-            var demoAnswer = MockAnswerBuilder.Build(userPrompt);
-            var tokens = Math.Max(50, userPrompt.Length / 4);
-            return (demoAnswer, tokens, tokens / 2);
-        }
-
         var payload = new
         {
             model = _settings.Model,
@@ -116,12 +107,5 @@ public class OpenAiHttpClient : IOpenAiClient
         var answer = json.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";
         var usage = json.GetProperty("usage");
         return (answer, usage.GetProperty("prompt_tokens").GetInt32(), usage.GetProperty("completion_tokens").GetInt32());
-    }
-
-    private static float[] MockEmbedding(string text)
-    {
-        var hash = text.GetHashCode();
-        var random = new Random(hash);
-        return Enumerable.Range(0, 1536).Select(_ => (float)random.NextDouble()).ToArray();
     }
 }

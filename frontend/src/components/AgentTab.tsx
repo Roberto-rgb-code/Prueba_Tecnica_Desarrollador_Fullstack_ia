@@ -11,6 +11,7 @@ interface ChatMessage {
   sources?: string[];
   metrics?: string;
   isDemo?: boolean;
+  llmProvider?: string;
 }
 
 const SUGGESTIONS = [
@@ -73,6 +74,7 @@ export default function AgentTab() {
           sources: data.sources,
           metrics,
           isDemo: data.isDemoMode,
+          llmProvider: data.llmProvider,
         },
       ]);
     } catch {
@@ -107,8 +109,8 @@ export default function AgentTab() {
             RAG sobre usuarios, roles, autenticación y auditoría
           </p>
         </div>
-        <div className="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:block">
-          <Sparkles className="mb-1 inline h-3.5 w-3.5" /> Modo demo sin OpenAI activo por defecto
+        <div className="hidden rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 sm:block">
+          <Sparkles className="mb-1 inline h-3.5 w-3.5" /> Powered by Ollama local (llama3.2)
         </div>
       </div>
 
@@ -135,7 +137,17 @@ export default function AgentTab() {
                     </span>
                     {msg.isDemo && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        Demo RAG local
+                        Demo local
+                      </span>
+                    )}
+                    {msg.llmProvider === 'Ollama' && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        Ollama · {msg.llmProvider}
+                      </span>
+                    )}
+                    {msg.llmProvider === 'OpenAi' && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+                        OpenAI
                       </span>
                     )}
                   </div>

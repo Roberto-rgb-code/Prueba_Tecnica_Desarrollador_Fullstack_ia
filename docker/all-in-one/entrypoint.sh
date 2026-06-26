@@ -31,5 +31,13 @@ rabbitmq-server -detached
 
 /app/wait-infra.sh
 
-echo "Starting microservices and nginx..."
+# Defaults for AI agent (overridden by docker-compose env)
+export Llm__Provider="${Llm__Provider:-Ollama}"
+export Ollama__Enabled="${Ollama__Enabled:-true}"
+export Ollama__BaseUrl="${Ollama__BaseUrl:-http://ollama:11434}"
+export Ollama__ChatModel="${Ollama__ChatModel:-llama3.2:1b}"
+export Ollama__EmbeddingModel="${Ollama__EmbeddingModel:-nomic-embed-text}"
+export Ollama__EmbeddingDimensions="${Ollama__EmbeddingDimensions:-768}"
+
+echo "Starting microservices and nginx (LLM: ${Llm__Provider})..."
 exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf

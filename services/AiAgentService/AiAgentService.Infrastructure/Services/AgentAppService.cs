@@ -22,6 +22,8 @@ public class QdrantSettings
     public string Host { get; set; } = "qdrant";
     public int Port { get; set; } = 6334;
     public string CollectionName { get; set; } = "toka_knowledge";
+    public bool Enabled { get; set; }
+    public int VectorSize { get; set; } = 768;
 }
 
 public class AgentAppService : IAgentService
@@ -33,22 +35,19 @@ public class AgentAppService : IAgentService
         """;
 
     private readonly IVectorStore _vectorStore;
-    private readonly IOpenAiClient _openAi;
+    private readonly IOpenAiClient _llm;
     private readonly IUserContextClient _userContext;
-    private readonly OpenAiSettings _openAiSettings;
     private readonly ILogger<AgentAppService> _logger;
 
     public AgentAppService(
         IVectorStore vectorStore,
-        IOpenAiClient openAi,
+        IOpenAiClient llm,
         IUserContextClient userContext,
-        IOptions<OpenAiSettings> openAiSettings,
         ILogger<AgentAppService> logger)
     {
         _vectorStore = vectorStore;
-        _openAi = openAi;
+        _llm = llm;
         _userContext = userContext;
-        _openAiSettings = openAiSettings.Value;
         _logger = logger;
     }
 
@@ -56,7 +55,7 @@ public class AgentAppService : IAgentService
     {
         var sw = Stopwatch.StartNew();
         var userContext = await _userContext.GetUserSummaryAsync(cancellationToken);
-        var embedding = await _openAi.CreateEmbeddingAsync(request.Question, cancellationToken);
+        var embedding = await _llm.CreateEmbeddingAsync(request.Question, cancellationToken);
         var sources = await _vectorStore.SearchAsync(embedding, limit: 3, cancellationToken);
 
         var context = string.Join("\n\n", sources.Select(s => $"[{s.Title}]\n{s.Content}"));
@@ -70,23 +69,24 @@ public class AgentAppService : IAgentService
             User question: {request.Question}
             """;
 
-        var (answer, inputTokens, outputTokens) = await _openAi.CompleteAsync(SystemPrompt, prompt, cancellationToken);
+        var (answer, inputTokens, outputTokens) = await _llm.CompleteAsync(SystemPrompt, prompt, cancellationToken);
         sw.Stop();
 
+        var isLocal = _llm.ProviderName is "Mock" or "Ollama";
         var metrics = new AgentMetricsDto(
             sw.ElapsedMilliseconds,
             inputTokens,
             outputTokens,
-            EstimateCost(inputTokens, outputTokens));
+            isLocal ? 0 : EstimateCost(inputTokens, outputTokens));
 
-        _logger.LogInformation("Agent query completed in {LatencyMs}ms, tokens in={Input} out={Output}",
-            metrics.LatencyMs, metrics.InputTokens, metrics.OutputTokens);
+        _logger.LogInformation("Agent query via {Provider} in {LatencyMs}ms", _llm.ProviderName, metrics.LatencyMs);
 
         return new AgentQueryResponse(
             answer,
             sources.Select(s => s.Title).ToArray(),
             metrics,
-            string.IsNullOrWhiteSpace(_openAiSettings.ApiKey));
+            _llm.ProviderName == "Mock",
+            _llm.ProviderName);
     }
 
     public async Task SeedKnowledgeBaseAsync(CancellationToken cancellationToken = default)
@@ -102,7 +102,7 @@ public class AgentAppService : IAgentService
         await _vectorStore.EnsureCollectionAsync(cancellationToken);
         foreach (var doc in docs)
         {
-            var embedding = await _openAi.CreateEmbeddingAsync($"{doc.Title}: {doc.Content}", cancellationToken);
+            var embedding = await _llm.CreateEmbeddingAsync($"{doc.Title}: {doc.Content}", cancellationToken);
             await _vectorStore.UpsertAsync(doc, embedding, cancellationToken);
         }
     }
@@ -120,6 +120,7 @@ public interface IVectorStore
 
 public interface IOpenAiClient
 {
+    string ProviderName { get; }
     Task<float[]> CreateEmbeddingAsync(string text, CancellationToken cancellationToken = default);
     Task<(string Answer, int InputTokens, int OutputTokens)> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default);
 }

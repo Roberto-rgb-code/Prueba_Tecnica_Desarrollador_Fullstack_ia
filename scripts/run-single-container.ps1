@@ -7,8 +7,8 @@ $env:DOCKER_BUILDKIT = "0"
 $env:COMPOSE_DOCKER_CLI_BUILD = "0"
 
 Write-Host "=== Toka - Contenedor unico ===" -ForegroundColor Cyan
-Write-Host "Incluye: SQL Server, MongoDB, Redis, RabbitMQ, 6 microservicios, Gateway y Frontend" -ForegroundColor Gray
-Write-Host "Build puede tardar 10-15 min la primera vez..." -ForegroundColor Yellow
+Write-Host "Incluye: SQL Server, MongoDB, Redis, RabbitMQ, Ollama (LLM local), microservicios, Gateway y Frontend" -ForegroundColor Gray
+Write-Host "Build puede tardar 10-20 min la primera vez (descarga modelos Ollama)..." -ForegroundColor Yellow
 
 docker compose -f docker-compose.single.yml up --build -d
 

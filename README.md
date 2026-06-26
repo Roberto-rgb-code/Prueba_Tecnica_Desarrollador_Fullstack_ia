@@ -11,9 +11,37 @@ Prueba técnica **Senior Full-Stack Engineer (IA)** — sistema de gestión de u
 | (Opcional) [.NET 8 SDK](https://dotnet.microsoft.com/download) | Para tests locales |
 | (Opcional) [Node.js 20+](https://nodejs.org/) | Para frontend en dev |
 
-Opcional: `OPENAI_API_KEY` para respuestas reales del agente IA (sin ella funciona en modo mock).
+Opcional: `OPENAI_API_KEY` para usar OpenAI en lugar de Ollama. Por defecto el agente usa **Ollama** con modelos locales en Docker.
 
 ---
+
+## Agente IA con Ollama (incluido en Docker)
+
+El stack incluye un contenedor **Ollama** con modelos preconfigurados:
+
+| Modelo | Uso |
+|--------|-----|
+| `llama3.2:1b` | Chat / respuestas del agente |
+| `nomic-embed-text` | Embeddings para RAG |
+
+La primera vez que levantas Docker, `ollama-init` descarga los modelos (~1–2 GB). Requiere **10 GB RAM** recomendado.
+
+```powershell
+.\scripts\run-single-container.ps1
+```
+
+Prioridad del proveedor LLM (`Llm__Provider`):
+
+1. **Ollama** (default en Docker)
+2. **OpenAi** si defines `OPENAI_API_KEY` y `LLM_PROVIDER=OpenAi`
+3. **Mock** fallback sin Ollama ni OpenAI
+
+Cambiar modelo:
+
+```powershell
+$env:OLLAMA_CHAT_MODEL = "phi3:mini"
+.\scripts\run-single-container.ps1
+```
 
 ## Inicio rápido (recomendado — un solo contenedor)
 
@@ -152,7 +180,10 @@ Todas las rutas pasan por el gateway (`/api/...`):
 
 | Variable | Descripción |
 |----------|-------------|
-| `OPENAI_API_KEY` | API key OpenAI (opcional; mock si no está) |
+| `OPENAI_API_KEY` | API key OpenAI (opcional; usa OpenAI si `LLM_PROVIDER=OpenAi`) |
+| `LLM_PROVIDER` | `Ollama` (default), `OpenAi`, o `Mock` |
+| `OLLAMA_CHAT_MODEL` | Modelo chat Ollama (default: `llama3.2:1b`) |
+| `OLLAMA_EMBED_MODEL` | Modelo embeddings (default: `nomic-embed-text`) |
 | `SA_PASSWORD` | Password SQL Server en contenedor (default en compose) |
 
 Ejemplo con agente IA real:

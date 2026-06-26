@@ -2,7 +2,6 @@ using AiAgentService.Application.DTOs;
 using AiAgentService.Domain.Entities;
 using AiAgentService.Infrastructure.Services;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace AiAgentService.Tests;
@@ -33,8 +32,8 @@ public class AgentAppServiceTests
             _vectorStore.Object,
             _openAi.Object,
             _userContext.Object,
-            settings,
             NullLogger<AgentAppService>.Instance);
+        _openAi.Setup(o => o.ProviderName).Returns("OpenAi");
     }
 
     [Fact]
