@@ -1,0 +1,34 @@
+name: Publish Toka image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push all-in-one image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.all-in-one
+          push: true
+          tags: |
+            ghcr.io/roberto-rgb-code/toka-all-in-one:latest
+            ghcr.io/roberto-rgb-code/toka-all-in-one:${{ github.sha }}

@@ -10,78 +10,103 @@ Prueba técnica **Senior Full-Stack Engineer (IA)** — sistema de gestión de u
 
 Solo necesitas **Docker Desktop** instalado y **encendido**. No hace falta .NET ni Node.
 
-### Paso 1 — Clonar el repositorio
+> **Importante:** no uses `up --build` salvo que quieras compilar tú mismo (tarda **30–45 min** y necesita **~20 GB** de disco). Lo normal es **descargar la imagen ya compilada** desde GitHub.
+
+### Paso 1 — Clonar
 
 ```bash
 git clone https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia.git
 cd Prueba_Tecnica_Desarrollador_Fullstack_ia
 ```
 
-### Paso 2 — Levantar con Docker
+### Paso 2 — Descargar imagen y levantar
 
-Abre una terminal **dentro de la carpeta del proyecto** y ejecuta:
+Abre una terminal **dentro de la carpeta del proyecto**:
 
 **Windows (PowerShell):**
 
 ```powershell
-$env:DOCKER_BUILDKIT = "0"
-$env:COMPOSE_DOCKER_CLI_BUILD = "0"
-docker compose -f docker-compose.single.yml up --build -d
+docker compose -f docker-compose.single.yml pull
+docker compose -f docker-compose.single.yml up -d
 ```
 
 **Linux / macOS:**
 
 ```bash
-export DOCKER_BUILDKIT=0
-export COMPOSE_DOCKER_CLI_BUILD=0
-docker compose -f docker-compose.single.yml up --build -d
+docker compose -f docker-compose.single.yml pull
+docker compose -f docker-compose.single.yml up -d
 ```
 
-> La **primera vez** tarda 15–30 min (build + descarga de modelos Ollama). Es normal.
+La primera vez también descarga **Ollama** y los modelos de IA (~1–2 GB). Total: **5–15 min** según tu internet.
 
-**Comprobar que Docker está corriendo:**
+**Comprobar estado:**
 
-```bash
-docker info
+```powershell
 docker compose -f docker-compose.single.yml ps
 ```
 
-Debes ver 2 contenedores activos: `ollama` y `toka`.
+Debes ver `ollama` y `toka` en estado **running**.
 
-**Ver progreso en tiempo real:**
+**Ver logs (si algo tarda):**
 
-```bash
-docker compose -f docker-compose.single.yml logs -f
+```powershell
+docker compose -f docker-compose.single.yml logs -f toka
 ```
 
-(Salir con `Ctrl+C` — no detiene los contenedores.)
+No cierres la terminal mientras ves actividad. Cuando SQL Server termine de arrancar, verás los microservicios activos.
 
-### Paso 3 — Abrir la aplicación
+### Paso 3 — Abrir la app
 
 1. Espera **2–3 minutos** después del `up`.
-2. Abre en el navegador: **http://localhost:3000**
-3. Clic en **Regístrate** → crea un usuario (email + contraseña mín. 6 caracteres).
-4. Prueba las pestañas: Usuarios, Roles, Auditoría, **Agente IA**.
+2. Navegador: **http://localhost:3000**
+3. **Regístrate** (no hay usuario precargado).
+4. Prueba: Usuarios, Roles, Auditoría, **Agente IA**.
 
-**Verificar que todo responde (opcional):**
+Verificación rápida:
 
-```bash
+```powershell
 curl http://localhost:3000/health
 ```
 
-Debe devolver HTTP **200**. En el agente IA pregunta: *¿Qué roles existen en el sistema?*
+Debe responder **200**.
+
+---
+
+### ¿Por qué falló `up --build`?
+
+Si ejecutaste `docker compose ... up --build -d`, Docker **compila todo en tu PC** (SQL Server, MongoDB, .NET, React…). Eso:
+
+- Tarda **30–45 minutos** (el log se queda mucho rato en `Step 17/35` instalando SQL Server — es normal).
+- Necesita **~20 GB** de espacio libre en disco.
+- Si cierras la terminal o se llena el disco, el build se corta y **no levanta nada**.
+
+**Solución:** usa `pull` + `up` (Paso 2 arriba), sin `--build`.
+
+---
+
+### Compilar localmente (solo si hace falta)
+
+Solo si no puedes descargar la imagen de GitHub:
+
+```powershell
+$env:TOKA_BUILD = "1"
+$env:DOCKER_BUILDKIT = "0"
+docker compose -f docker-compose.single.yml up --build -d
+```
+
+**No interrumpas el proceso.** Espera hasta ver `Successfully built` o `Container ... Started`.
 
 ---
 
 ### Detener el proyecto
 
-```bash
+```powershell
 docker compose -f docker-compose.single.yml down
 ```
 
-Borrar también volúmenes (modelos Ollama descargados):
+Borrar volúmenes (modelos Ollama):
 
-```bash
+```powershell
 docker compose -f docker-compose.single.yml down -v
 ```
 
@@ -91,12 +116,11 @@ docker compose -f docker-compose.single.yml down -v
 
 | Requisito | Detalle |
 |-----------|---------|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Instalado y **en ejecución** |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Instalado y **en ejecución** (`docker info` sin errores) |
 | RAM libre | 10 GB recomendado |
-| Disco libre | ~5 GB |
+| Disco libre | **5 GB** con imagen preconstruida; **20 GB** si compilas local |
 | Puerto **3000** | Libre |
-
-> **Windows:** si el build falla, clona en `C:\dev\toka` (ruta sin tildes). Si usas el script `.ps1` y ves "buildkit isn't enabled", es solo un aviso — los comandos `docker compose` de arriba funcionan igual.
+| Internet | Primera vez (imagen + modelos Ollama) |
 
 ### Scripts opcionales (alternativa al Paso 2)
 
@@ -388,14 +412,14 @@ Rutas vía gateway en `/api/...`:
 
 | Síntoma | Solución |
 |---------|----------|
-| `docker: command not found` o error al conectar | Abre **Docker Desktop** y espera a que diga "Running". Prueba `docker info`. |
-| No levanta nada / compose no encuentra archivo | Asegúrate de estar en la carpeta del repo: `cd Prueba_Tecnica_Desarrollador_Fullstack_ia` |
-| Build falla en Windows con ruta con tildes | Clona en `C:\dev\toka` y ejecuta `$env:DOCKER_BUILDKIT="0"` antes del `docker compose` |
-| `/health` no responde tras 5 min | `docker compose -f docker-compose.single.yml logs -f toka` — SQL Server tarda en arrancar |
-| Agente IA no responde bien | `docker compose -f docker-compose.single.yml restart toka` y espera 2 min |
-| `ollama-init` lento o falla | Necesitas internet la 1.ª vez; reintenta `docker compose -f docker-compose.single.yml up ollama-init` |
-| Puerto 3000 ocupado | En `docker-compose.single.yml` cambia `"3000:80"` por `"3001:80"` |
-| Poca RAM | Cierra otras apps; mínimo 8 GB, recomendado 10 GB |
+| `up --build` se corta en `Step 17/35` | Normal al compilar local. Usa `pull` + `up` sin `--build` (ver Paso 2). |
+| `pull` falla / imagen no encontrada | Espera a que termine [GitHub Actions](https://github.com/Roberto-rgb-code/Prueba_Tecnica_Desarrollador_Fullstack_ia/actions) o usa `$env:TOKA_BUILD="1"` |
+| `docker: command not found` | Abre **Docker Desktop** y espera "Running". Prueba `docker info`. |
+| No encuentra `docker-compose.single.yml` | `cd Prueba_Tecnica_Desarrollador_Fullstack_ia` (carpeta del clone) |
+| `/health` no responde tras 5 min | `docker compose -f docker-compose.single.yml logs -f toka` |
+| Agente IA no responde | `docker compose -f docker-compose.single.yml restart toka` |
+| Puerto 3000 ocupado | Cambia `"3000:80"` por `"3001:80"` en `docker-compose.single.yml` |
+| Poco disco al compilar | Necesitas ~20 GB libres; mejor usa `docker compose pull` |
 
 Ver logs en tiempo real:
 
